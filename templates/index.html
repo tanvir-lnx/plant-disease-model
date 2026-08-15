@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Disease Detector</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 50px 20px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .upload-area {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            border: 2px dashed #3498db;
+            padding: 40px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: #fafafa;
+        }
+        .upload-area:hover {
+            background-color: #f0f8ff;
+            border-color: #2980b9;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        img#preview {
+            width: 100%;
+            max-height: 400px;
+            object-fit: cover;
+            border-radius: 8px;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        /* A/B Testing Button Layout */
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            flex: 1;
+            color: white;
+            border: none;
+            padding: 14px 15px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s, opacity 0.3s;
+            box-sizing: border-box;
+        }
+        
+        /* Different colors so users know they are distinct engines */
+        .btn-basic {
+            background-color: #7f8c8d; /* Professional Gray */
+        }
+        .btn-basic:hover {
+            background-color: #95a5a6;
+        }
+        
+        .btn-advanced {
+            background-color: #27ae60; /* Vibrant Green */
+        }
+        .btn-advanced:hover {
+            background-color: #2ecc71;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #result {
+            margin-top: 25px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+            font-weight: bold;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .model-badge {
+            display: inline-block;
+            background: rgba(0,0,0,0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Leaf Diagnostic AI</h1>
+        <p>Upload a photo of a tomato leaf to detect early or late blight.</p>
+        
+        <form id="uploadForm">
+            <label class="upload-area" id="uploadLabel" for="fileInput">
+                <div id="uploadText">Click to select a leaf image</div>
+                <img id="preview" alt="Image Preview">
+            </label>
+            <input type="file" id="fileInput" accept="image/*" required>
+            
+            <div class="button-group">
+                <button type="button" id="btnBasic" class="btn-basic">Basic Model (MLP)</button>
+                <button type="button" id="btnAdvanced" class="btn-advanced">Deep Learning (CNN)</button>
+            </div>
+        </form>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const preview = document.getElementById('preview');
+        const uploadText = document.getElementById('uploadText');
+        const uploadLabel = document.getElementById('uploadLabel');
+        const resultDiv = document.getElementById('result');
+        
+        const btnBasic = document.getElementById('btnBasic');
+        const btnAdvanced = document.getElementById('btnAdvanced');
+
+        // Show image preview 
+        fileInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    uploadText.style.display = 'none';
+                    
+                    uploadLabel.style.border = 'none';
+                    uploadLabel.style.padding = '0';
+                    uploadLabel.style.backgroundColor = 'transparent';
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Reusable function to submit to either API endpoint
+        async function runAnalysis(endpoint, buttonElement) {
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Please select an image first!");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // UI Loading State
+            const originalText = buttonElement.textContent;
+            buttonElement.textContent = "Analyzing...";
+            btnBasic.disabled = true;
+            btnAdvanced.disabled = true;
+            resultDiv.style.display = 'none';
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+
+                resultDiv.style.display = 'block';
+                if (response.ok) {
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `
+                        <span class="model-badge">${data.model_used}</span><br>
+                        Diagnosis: <strong>${data.disease}</strong> <br> 
+                        Confidence: ${data.confidence}
+                    `;
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML = `Error: ${data.error}`;
+                }
+            } catch (error) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `Network Error: ${error.message}`;
+            } finally {
+                // Restore UI
+                buttonElement.textContent = originalText;
+                btnBasic.disabled = false;
+                btnAdvanced.disabled = false;
+            }
+        }
+
+        // Attach listeners to both buttons
+        btnBasic.addEventListener('click', () => runAnalysis('/predict_basic', btnBasic));
+        btnAdvanced.addEventListener('click', () => runAnalysis('/predict_advanced', btnAdvanced));
+    </script>
+</body>
+</html>
