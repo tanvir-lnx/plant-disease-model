@@ -20,8 +20,9 @@ CLASS_NAMES = ['Tomato Early Blight', 'Tomato Late Blight', 'Tomato Healthy']
 
 def looks_like_leaf(img_rgb, threshold=0.15):
     hsv = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)
-    lower_green = np.array([10, 20, 20])
-    upper_green = np.array([100, 255, 255])
+    # true green-only range (excludes browns, skin tones, wood, paper)
+    lower_green = np.array([30, 40, 30])
+    upper_green = np.array([90, 255, 255])
     mask = cv2.inRange(hsv, lower_green, upper_green)
     green_ratio = np.sum(mask > 0) / mask.size
     return green_ratio >= threshold
