@@ -1,7 +1,7 @@
-Flask
+streamlit
 opencv-python-headless
 numpy
 scikit-learn
 joblib
 tensorflow-cpu
-gunicorn
+pillow
