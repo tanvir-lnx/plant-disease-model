@@ -18,6 +18,14 @@ mlp_model, scaler, cnn_model = load_models()
 
 CLASS_NAMES = ['Tomato Early Blight', 'Tomato Late Blight', 'Tomato Healthy']
 
+def looks_like_leaf(img_rgb, threshold=0.15):
+    hsv = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)
+    lower_green = np.array([10, 20, 20])
+    upper_green = np.array([100, 255, 255])
+    mask = cv2.inRange(hsv, lower_green, upper_green)
+    green_ratio = np.sum(mask > 0) / mask.size
+    return green_ratio >= threshold
+
 def auto_crop_leaf(img_rgb):
     hsv = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)
     lower_green = np.array([10, 20, 20])
@@ -74,15 +82,21 @@ if uploaded_file is not None:
         advanced_clicked = st.button("Deep Learning (CNN)", use_container_width=True, type="primary")
 
     if basic_clicked:
-        with st.spinner("Analyzing..."):
-            disease, confidence = predict_basic(img_rgb)
-        st.success(f"Diagnosis: **{disease}**")
-        st.caption(f"Basic MLP Model — Confidence: {confidence:.2f}%")
+        if not looks_like_leaf(img_rgb):
+            st.warning("This doesn't look like a leaf image. Please upload a clear tomato leaf photo.")
+        else:
+            with st.spinner("Analyzing..."):
+                disease, confidence = predict_basic(img_rgb)
+            st.success(f"Diagnosis: **{disease}**")
+            st.caption(f"Basic MLP Model — Confidence: {confidence:.2f}%")
 
     if advanced_clicked:
-        with st.spinner("Analyzing..."):
-            disease, confidence = predict_advanced(img_rgb)
-        st.success(f"Diagnosis: **{disease}**")
-        st.caption(f"Advanced CNN Model — Confidence: {confidence:.2f}%")
+        if not looks_like_leaf(img_rgb):
+            st.warning("This doesn't look like a leaf image. Please upload a clear tomato leaf photo.")
+        else:
+            with st.spinner("Analyzing..."):
+                disease, confidence = predict_advanced(img_rgb)
+            st.success(f"Diagnosis: **{disease}**")
+            st.caption(f"Advanced CNN Model — Confidence: {confidence:.2f}%")
 else:
     st.info("Please upload an image to get started.")
